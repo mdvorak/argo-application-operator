@@ -16,6 +16,7 @@ import (
 	"github.com/mdvorak/argo-application-operator/pkg/controller"
 	"github.com/mdvorak/argo-application-operator/version"
 
+	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -104,6 +105,12 @@ func main() {
 
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	// Setup Scheme for Argo
+	if err := argocdv1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

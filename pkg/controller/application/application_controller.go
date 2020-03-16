@@ -2,16 +2,17 @@ package application
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"strings"
 
+	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	opsv1alpha1 "github.com/mdvorak/argo-application-operator/pkg/apis/ops/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -51,9 +52,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner Application
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	// Watch for changes to secondary resource Application and requeue the owner Application
+	err = c.Watch(&source.Kind{Type: &argocdv1alpha1.Application{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &opsv1alpha1.Application{},
 	})
@@ -99,54 +99,58 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
+	// Define a new Argo Application object
+	app := newApplication(instance)
 
 	// Set Application instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+	// TODO NOT SUPPORTED
+	if err := controllerutil.SetControllerReference(instance, app, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	// Check if this Application already exists
+	found := &argocdv1alpha1.Application{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		reqLogger.Info("Creating a new Application", "Application.Namespace", app.Namespace, "Application.Name", app.Name)
+		err = r.client.Create(context.TODO(), app)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 
-		// Pod created successfully - don't requeue
+		// Application created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+	// Application already exists - don't requeue
+	reqLogger.Info("Skip reconcile: Application already exists", "Application.Namespace", found.Namespace, "Application.Name", found.Name)
 	return reconcile.Result{}, nil
 }
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *opsv1alpha1.Application) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
+func newApplication(cr *opsv1alpha1.Application) *argocdv1alpha1.Application {
+	name := cr.Name
+	if !strings.HasPrefix(name, cr.Namespace+"-") {
+		name = cr.Namespace + "-" + cr.Name
 	}
-	return &corev1.Pod{
+
+	return &argocdv1alpha1.Application{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
+			Name:      name,
+			Namespace: "argocd", // TODO
 		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
+		Spec: argocdv1alpha1.ApplicationSpec{
+			Source: cr.Spec.Source,
+			Destination: argocdv1alpha1.ApplicationDestination{
+				Server:    "https://kubernetes.default.svc", // TODO
+				Namespace: cr.Namespace,
 			},
+			Project:              cr.Namespace,
+			SyncPolicy:           cr.Spec.SyncPolicy,
+			IgnoreDifferences:    cr.Spec.IgnoreDifferences,
+			Info:                 cr.Spec.Info,
+			RevisionHistoryLimit: nil,
 		},
 	}
 }

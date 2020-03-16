@@ -1,7 +1,8 @@
 apiVersion: ops.csas.cz/v1alpha1
 kind: Application
 metadata:
-  name: example-application
+  name: mdvorak-example
 spec:
-  # Add fields here
-  size: 3
+  source:
+    path: guestbook
+    repoURL: 'https://github.com/argoproj/argocd-example-apps'
