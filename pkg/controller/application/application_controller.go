@@ -2,12 +2,14 @@ package application
 
 import (
 	"context"
+	"errors"
 	"github.com/go-logr/logr"
+	"os"
 	"strings"
 
 	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	opsv1alpha1 "github.com/mdvorak/argo-application-operator/pkg/apis/ops/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,8 +23,14 @@ import (
 )
 
 var log = logf.Log.WithName("controller_application")
+var targetNamespace string
 
+const TargetNamespaceEnvVar = "TARGET_NAMESPACE"
 const applicationFinalizer = "finalizer.application.ops.csas.cz"
+const ownerApiVersionLabel = "application.ops.csas.cz/owner-apiVersion"
+const ownerKindLabel = "application.ops.csas.cz/owner-kind"
+const ownerNameLabel = "application.ops.csas.cz/owner-name"
+const ownerNamespaceLabel = "application.ops.csas.cz/owner-namespace"
 
 // Add creates a new Application Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -37,6 +45,14 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
+	// Store targetNamespace
+	if ns, ok := os.LookupEnv(TargetNamespaceEnvVar); ok && len(ns) > 0 {
+		targetNamespace = ns
+	} else {
+		// TODO fallback
+		return errors.New(TargetNamespaceEnvVar + " not set")
+	}
+
 	// Create a new controller
 	c, err := controller.New("application-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -50,10 +66,17 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to secondary resource Application and requeue the owner Application
-	// TODO not working since ownership does not work
-	err = c.Watch(&source.Kind{Type: &argocdv1alpha1.Application{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &opsv1alpha1.Application{},
+	err = c.Watch(&source.Kind{Type: &argocdv1alpha1.Application{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+			// TODO kind, ver, and only if matches
+			// managed-by
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Name:      obj.Meta.GetLabels()[ownerNameLabel],
+					Namespace: obj.Meta.GetLabels()[ownerNamespaceLabel],
+				}},
+			}
+		}),
 	})
 	if err != nil {
 		return err
@@ -87,7 +110,7 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	instance := &opsv1alpha1.Application{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -97,13 +120,16 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	// Define a new Argo Application object
+	app := newApplication(instance)
+
 	// Check if the instance is marked to be deleted, which is indicated by the deletion timestamp being set.
 	markedToBeDeleted := instance.GetDeletionTimestamp() != nil
 	if markedToBeDeleted {
 		if contains(instance.GetFinalizers(), applicationFinalizer) {
 			// Run finalization logic for our finalizer. If the finalization logic fails,
 			// don't remove the finalizer so that we can retry during the next reconciliation.
-			if err := r.finalizeApplication(reqLogger, instance); err != nil {
+			if err := r.finalizeApplication(reqLogger, instance, app); err != nil {
 				return reconcile.Result{}, err
 			}
 
@@ -122,13 +148,10 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 
-	// Define a new Argo Application object
-	app := newApplication(instance)
-
 	// Check if this Application already exists
 	found := &argocdv1alpha1.Application{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && k8serrors.IsNotFound(err) {
 		reqLogger.Info("Creating a new Application", "Application.Namespace", app.Namespace, "Application.Name", app.Name)
 		err = r.client.Create(context.TODO(), app)
 		if err != nil {
@@ -169,12 +192,27 @@ func (r *ReconcileApplication) removeFinalizer(reqLogger logr.Logger, instance *
 	return nil
 }
 
-func (r *ReconcileApplication) finalizeApplication(reqLogger logr.Logger, m *opsv1alpha1.Application) error {
-	// TODO(user): Add the cleanup steps that the operator
-	// needs to do before the CR can be deleted. Examples
-	// of finalizers include performing backups and deleting
-	// resources that are not owned by this CR, like a PVC.
-	reqLogger.Info("Successfully finalized")
+func (r *ReconcileApplication) finalizeApplication(reqLogger logr.Logger, instance *opsv1alpha1.Application, app *argocdv1alpha1.Application) error {
+	reqLogger.Info("Running finalizer", "Application.Namespace", instance.Namespace, "Application.Name", instance.Name)
+
+	// Check if this Application exists
+	found := &argocdv1alpha1.Application{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, found)
+	if err != nil {
+		// If there was error but it wasn't NotFound, propagate the error
+		if k8serrors.IsNotFound(err) {
+			// Already deleted, nothing to do
+			return nil
+		}
+		return err
+	}
+
+	// Delete
+	err = r.client.Delete(context.TODO(), found)
+	if err != nil {
+		reqLogger.Error(err, "Failed to delete Application")
+		return err
+	}
 	return nil
 }
 
@@ -187,7 +225,13 @@ func newApplication(cr *opsv1alpha1.Application) *argocdv1alpha1.Application {
 	return &argocdv1alpha1.Application{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: "argocd", // TODO
+			Namespace: targetNamespace,
+			Labels: map[string]string{
+				ownerApiVersionLabel: opsv1alpha1.SchemeGroupVersion.String(),
+				ownerKindLabel:       "Application",
+				ownerNamespaceLabel:  cr.Namespace,
+				ownerNameLabel:       cr.Name,
+			},
 		},
 		Spec: argocdv1alpha1.ApplicationSpec{
 			Source: cr.Spec.Source,

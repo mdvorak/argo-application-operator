@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/argoproj/argo-cd v1.4.2
 	github.com/argoproj/pkg v0.0.0-20200312193032-883dd1b17283 // indirect
+	github.com/go-logr/logr v0.1.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
