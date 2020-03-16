@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argo-application-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: argo-application-operator
+  template:
+    metadata:
+      labels:
+        name: argo-application-operator
+    spec:
+      serviceAccountName: argo-application-operator
+      containers:
+        - name: argo-application-operator
+          # Replace this with the built image name
+          image: REPLACE_IMAGE
+          command:
+          - argo-application-operator
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "argo-application-operator"
