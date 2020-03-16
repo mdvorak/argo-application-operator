@@ -3,8 +3,13 @@ module github.com/mdvorak/argo-application-operator
 go 1.13
 
 require (
+	github.com/argoproj/argo-cd v1.4.2
+	github.com/argoproj/pkg v0.0.0-20200312193032-883dd1b17283 // indirect
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/operator-framework/operator-sdk v0.15.2
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/spf13/pflag v1.0.5
+	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v12.0.0+incompatible
