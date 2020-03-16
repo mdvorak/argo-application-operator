@@ -2,7 +2,7 @@ package application
 
 import (
 	"context"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"github.com/go-logr/logr"
 	"strings"
 
 	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
@@ -22,10 +22,7 @@ import (
 
 var log = logf.Log.WithName("controller_application")
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
+const applicationFinalizer = "finalizer.application.ops.csas.cz"
 
 // Add creates a new Application Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -53,6 +50,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to secondary resource Application and requeue the owner Application
+	// TODO not working since ownership does not work
 	err = c.Watch(&source.Kind{Type: &argocdv1alpha1.Application{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &opsv1alpha1.Application{},
@@ -99,14 +97,33 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	// Check if the instance is marked to be deleted, which is indicated by the deletion timestamp being set.
+	markedToBeDeleted := instance.GetDeletionTimestamp() != nil
+	if markedToBeDeleted {
+		if contains(instance.GetFinalizers(), applicationFinalizer) {
+			// Run finalization logic for our finalizer. If the finalization logic fails,
+			// don't remove the finalizer so that we can retry during the next reconciliation.
+			if err := r.finalizeApplication(reqLogger, instance); err != nil {
+				return reconcile.Result{}, err
+			}
+
+			// Remove the finalizer. Once all finalizers have been removed, the object will be deleted.
+			if err := r.removeFinalizer(reqLogger, instance); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		return reconcile.Result{}, nil
+	}
+
+	// Add finalizer for this CR
+	if !contains(instance.GetFinalizers(), applicationFinalizer) {
+		if err := r.addFinalizer(reqLogger, instance); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
 	// Define a new Argo Application object
 	app := newApplication(instance)
-
-	// Set Application instance as the owner and controller
-	// TODO NOT SUPPORTED
-	if err := controllerutil.SetControllerReference(instance, app, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
 
 	// Check if this Application already exists
 	found := &argocdv1alpha1.Application{}
@@ -127,6 +144,38 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	// Application already exists - don't requeue
 	reqLogger.Info("Skip reconcile: Application already exists", "Application.Namespace", found.Namespace, "Application.Name", found.Name)
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileApplication) addFinalizer(reqLogger logr.Logger, instance *opsv1alpha1.Application) error {
+	reqLogger.Info("Adding Finalizer")
+	instance.SetFinalizers(append(instance.GetFinalizers(), applicationFinalizer))
+
+	// Update CR
+	err := r.client.Update(context.TODO(), instance)
+	if err != nil {
+		reqLogger.Error(err, "Failed to update Application with finalizer")
+		return err
+	}
+	return nil
+}
+
+func (r *ReconcileApplication) removeFinalizer(reqLogger logr.Logger, instance *opsv1alpha1.Application) error {
+	instance.SetFinalizers(remove(instance.GetFinalizers(), applicationFinalizer))
+	err := r.client.Update(context.TODO(), instance)
+	if err != nil {
+		reqLogger.Error(err, "Failed to update Application without finalizer")
+		return err
+	}
+	return nil
+}
+
+func (r *ReconcileApplication) finalizeApplication(reqLogger logr.Logger, m *opsv1alpha1.Application) error {
+	// TODO(user): Add the cleanup steps that the operator
+	// needs to do before the CR can be deleted. Examples
+	// of finalizers include performing backups and deleting
+	// resources that are not owned by this CR, like a PVC.
+	reqLogger.Info("Successfully finalized")
+	return nil
 }
 
 func newApplication(cr *opsv1alpha1.Application) *argocdv1alpha1.Application {
