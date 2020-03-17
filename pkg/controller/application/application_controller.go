@@ -2,10 +2,8 @@ package application
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
-	"os"
 	"reflect"
 	"strings"
 
@@ -27,7 +25,6 @@ import (
 var log = logf.Log.WithName("controller_application")
 var targetNamespace string
 
-const TargetNamespaceEnvVar = "TARGET_NAMESPACE"
 const applicationKind = "Application"
 const applicationFinalizer = "finalizer.application.ops.csas.cz"
 const ownerApiGroupLabel = "application.ops.csas.cz/owner-group"
@@ -52,17 +49,11 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	var err error
 
-	// Store targetNamespace for later use
-	if ns, ok := os.LookupEnv(TargetNamespaceEnvVar); ok && len(ns) > 0 {
-		targetNamespace = ns
-	} else {
-		// Fallback for local development
-		targetNamespace, err = k8sutil.GetWatchNamespace()
+	targetNamespace, err = GetTargetNamespace()
+	if err != nil {
+		// "Target namespace must be set"
+		return err
 	}
-	if len(targetNamespace) == 0 {
-		return fmt.Errorf("%s env variable must be set", TargetNamespaceEnvVar)
-	}
-	log.Info(fmt.Sprintf("%s=%s", TargetNamespaceEnvVar, targetNamespace))
 
 	// Create a new controller
 	c, err := controller.New("application-controller", mgr, controller.Options{Reconciler: r})
@@ -129,9 +120,11 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Application")
 
+	ctx := context.TODO()
+
 	// Fetch the Application instance
 	instance := &opsv1alpha1.Application{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -155,12 +148,12 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		if contains(instance.GetFinalizers(), applicationFinalizer) {
 			// Run finalization logic for our finalizer. If the finalization logic fails,
 			// don't remove the finalizer so that we can retry during the next reconciliation.
-			if err := r.finalizeApplication(appLogger, instance, app); err != nil {
+			if err := r.finalizeApplication(ctx, appLogger, instance, app); err != nil {
 				return reconcile.Result{}, err
 			}
 
 			// Remove the finalizer. Once all finalizers have been removed, the object will be deleted.
-			if err := r.removeFinalizer(appLogger, instance); err != nil {
+			if err := r.removeFinalizer(ctx, appLogger, instance); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
@@ -170,17 +163,17 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	// Add finalizer for this CR
 	if !contains(instance.GetFinalizers(), applicationFinalizer) {
 		appLogger.Info("Adding finalizer")
-		if err := r.addFinalizer(appLogger, instance); err != nil {
+		if err := r.addFinalizer(ctx, appLogger, instance); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
 
 	// Check if this Application already exists
 	found := &argocdv1alpha1.Application{}
-	err = getNoCache(r.client, context.TODO(), types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, found)
+	err = r.client.Get(ctx, types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, found)
 	if err != nil && k8serrors.IsNotFound(err) {
 		appLogger.Info("Creating a new Application")
-		err = r.client.Create(context.TODO(), app)
+		err = r.client.Create(ctx, app)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -207,7 +200,7 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	// Change detected
 	if isChanged {
 		appLogger.Info("Updating Application")
-		err = r.client.Update(context.TODO(), found)
+		err = r.client.Update(ctx, found)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -218,12 +211,12 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileApplication) addFinalizer(logger logr.Logger, instance *opsv1alpha1.Application) error {
+func (r *ReconcileApplication) addFinalizer(ctx context.Context, logger logr.Logger, instance *opsv1alpha1.Application) error {
 	logger.Info("Adding Finalizer")
 	instance.SetFinalizers(append(instance.GetFinalizers(), applicationFinalizer))
 
 	// Update CR
-	err := r.client.Update(context.TODO(), instance)
+	err := r.client.Update(ctx, instance)
 	if err != nil {
 		logger.Error(err, "Failed to update Application with finalizer")
 		return err
@@ -231,9 +224,9 @@ func (r *ReconcileApplication) addFinalizer(logger logr.Logger, instance *opsv1a
 	return nil
 }
 
-func (r *ReconcileApplication) removeFinalizer(logger logr.Logger, instance *opsv1alpha1.Application) error {
+func (r *ReconcileApplication) removeFinalizer(ctx context.Context, logger logr.Logger, instance *opsv1alpha1.Application) error {
 	instance.SetFinalizers(remove(instance.GetFinalizers(), applicationFinalizer))
-	err := r.client.Update(context.TODO(), instance)
+	err := r.client.Update(ctx, instance)
 	if err != nil {
 		logger.Error(err, "Failed to update Application without finalizer")
 		return err
@@ -241,12 +234,12 @@ func (r *ReconcileApplication) removeFinalizer(logger logr.Logger, instance *ops
 	return nil
 }
 
-func (r *ReconcileApplication) finalizeApplication(logger logr.Logger, instance *opsv1alpha1.Application, app *argocdv1alpha1.Application) error {
+func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger logr.Logger, instance *opsv1alpha1.Application, app *argocdv1alpha1.Application) error {
 	logger.Info("Running finalizer")
 
 	// Check if this Application exists
 	found := &argocdv1alpha1.Application{}
-	err := getNoCache(r.client, context.TODO(), types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, found)
+	err := r.client.Get(ctx, types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, found)
 	if err != nil {
 		// If there was error but it wasn't NotFound, propagate the error
 		if k8serrors.IsNotFound(err) {
@@ -259,7 +252,7 @@ func (r *ReconcileApplication) finalizeApplication(logger logr.Logger, instance 
 
 	// Delete
 	logger.Info("Deleting application")
-	err = r.client.Delete(context.TODO(), found)
+	err = r.client.Delete(ctx, found)
 	if err != nil {
 		logger.Error(err, "Failed to delete Application")
 		return err

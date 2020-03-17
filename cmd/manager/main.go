@@ -14,6 +14,7 @@ import (
 
 	"github.com/mdvorak/argo-application-operator/pkg/apis"
 	"github.com/mdvorak/argo-application-operator/pkg/controller"
+	"github.com/mdvorak/argo-application-operator/pkg/controller/application"
 	"github.com/mdvorak/argo-application-operator/version"
 
 	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
@@ -70,11 +71,26 @@ func main() {
 
 	printVersion()
 
+	// Target namespace needs to be watched as well
+	err := application.AddTargetNamespaceToWatched()
+	if err != nil {
+		log.Error(err, "Failed to add target namespace to watched namespace list")
+		os.Exit(1)
+	}
+
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
 		log.Error(err, "Failed to get watch namespace")
 		os.Exit(1)
 	}
+	log.Info(fmt.Sprintf("Watch namespace '%s'", namespace))
+
+	targetNamespace, err := application.GetTargetNamespace()
+	if err != nil {
+		log.Error(err, "Failed to get target namespace")
+		os.Exit(1)
+	}
+	log.Info(fmt.Sprintf("Target namespace '%s'", targetNamespace))
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
