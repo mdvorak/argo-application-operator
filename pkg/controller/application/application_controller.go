@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"reflect"
@@ -51,20 +52,19 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	targetNamespace, err = GetTargetNamespace()
 	if err != nil {
-		// "Target namespace must be set"
-		return err
+		return fmt.Errorf("target namespace must be set: %w", err)
 	}
 
 	// Create a new controller
 	c, err := controller.New("application-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create new controller: %w", err)
 	}
 
 	// Watch for changes to primary resource Application
 	err = c.Watch(&source.Kind{Type: &opsv1alpha1.Application{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to watch source objects: %w", err)
 	}
 
 	// Watch for changes to secondary resource Application and requeue the owner Application
@@ -72,7 +72,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		ToRequests: handler.ToRequestsFunc(watchMapFunc),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to watch target objects: %w", err)
 	}
 
 	return nil
@@ -149,12 +149,12 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 			// Run finalization logic for our finalizer. If the finalization logic fails,
 			// don't remove the finalizer so that we can retry during the next reconciliation.
 			if err := r.finalizeApplication(ctx, appLogger, instance, app); err != nil {
-				return reconcile.Result{}, err
+				return reconcile.Result{}, fmt.Errorf("failed to finalize application: %w", err)
 			}
 
 			// Remove the finalizer. Once all finalizers have been removed, the object will be deleted.
 			if err := r.removeFinalizer(ctx, appLogger, instance); err != nil {
-				return reconcile.Result{}, err
+				return reconcile.Result{}, fmt.Errorf("failed to remove %s: %w", applicationFinalizer, err)
 			}
 		}
 		return reconcile.Result{}, nil
@@ -164,7 +164,7 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	if !contains(instance.GetFinalizers(), applicationFinalizer) {
 		appLogger.Info("Adding finalizer")
 		if err := r.addFinalizer(ctx, appLogger, instance); err != nil {
-			return reconcile.Result{}, err
+			return reconcile.Result{}, fmt.Errorf("failed to add %s: %w", applicationFinalizer, err)
 		}
 	}
 
@@ -175,13 +175,13 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		appLogger.Info("Creating a new Application")
 		err = r.client.Create(ctx, app)
 		if err != nil {
-			return reconcile.Result{}, err
+			return reconcile.Result{}, fmt.Errorf("failed to create Application: %w", err)
 		}
 
 		// Application created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("failed to get existing Application: %w", err)
 	}
 
 	// Application exists, update
@@ -202,7 +202,7 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		appLogger.Info("Updating Application")
 		err = r.client.Update(ctx, found)
 		if err != nil {
-			return reconcile.Result{}, err
+			return reconcile.Result{}, fmt.Errorf("failed to update existing Application: %w", err)
 		}
 	}
 
@@ -216,22 +216,12 @@ func (r *ReconcileApplication) addFinalizer(ctx context.Context, logger logr.Log
 	instance.SetFinalizers(append(instance.GetFinalizers(), applicationFinalizer))
 
 	// Update CR
-	err := r.client.Update(ctx, instance)
-	if err != nil {
-		logger.Error(err, "Failed to update Application with finalizer")
-		return err
-	}
-	return nil
+	return r.client.Update(ctx, instance)
 }
 
 func (r *ReconcileApplication) removeFinalizer(ctx context.Context, logger logr.Logger, instance *opsv1alpha1.Application) error {
 	instance.SetFinalizers(remove(instance.GetFinalizers(), applicationFinalizer))
-	err := r.client.Update(ctx, instance)
-	if err != nil {
-		logger.Error(err, "Failed to update Application without finalizer")
-		return err
-	}
-	return nil
+	return r.client.Update(ctx, instance)
 }
 
 func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger logr.Logger, instance *opsv1alpha1.Application, app *argocdv1alpha1.Application) error {
@@ -247,15 +237,15 @@ func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger l
 			logger.Info("Application already deleted")
 			return nil
 		}
-		return err
+
+		return fmt.Errorf("failed to get Application for deletion: %w", err)
 	}
 
 	// Delete
 	logger.Info("Deleting application")
 	err = r.client.Delete(ctx, found)
 	if err != nil {
-		logger.Error(err, "Failed to delete Application")
-		return err
+		return fmt.Errorf("failed to delete Application: %w", err)
 	}
 
 	return nil
