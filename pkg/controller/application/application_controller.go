@@ -28,8 +28,8 @@ var targetNamespace string
 
 const applicationKind = "Application"
 const applicationFinalizer = "finalizer.application.ops.csas.cz"
-const ownerApiGroupLabel = "application.ops.csas.cz/owner-group"
-const ownerApiVersionLabel = "application.ops.csas.cz/owner-version"
+const ownerApiGroupLabel = "application.ops.csas.cz/owner-api-group"
+const ownerApiVersionLabel = "application.ops.csas.cz/owner-api-version"
 const ownerKindLabel = "application.ops.csas.cz/owner-kind"
 const ownerNameLabel = "application.ops.csas.cz/owner-name"
 const ownerNamespaceLabel = "application.ops.csas.cz/owner-namespace"
