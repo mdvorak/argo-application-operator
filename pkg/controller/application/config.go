@@ -9,11 +9,23 @@ import (
 	"strings"
 )
 
+const DestinationServerEnvVar = "DESTINATION_SERVER"
 const TargetNamespaceEnvVar = "TARGET_NAMESPACE"
 
+const DestinationServerDefault = "https://kubernetes.default.svc"
+
+func GetDestinationServer() string {
+	if value, ok := os.LookupEnv(DestinationServerEnvVar); ok && len(value) > 0 {
+		return value
+	} else {
+		// Default
+		return DestinationServerDefault
+	}
+}
+
 func GetTargetNamespace() (string, error) {
-	if targetNamespace, ok := os.LookupEnv(TargetNamespaceEnvVar); ok && len(targetNamespace) > 0 {
-		return targetNamespace, nil
+	if value, ok := os.LookupEnv(TargetNamespaceEnvVar); ok && len(value) > 0 {
+		return value, nil
 	} else {
 		return "", errors.New(fmt.Sprintf("%s not set", TargetNamespaceEnvVar))
 	}

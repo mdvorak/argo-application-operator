@@ -25,6 +25,7 @@ import (
 )
 
 var log = logf.Log.WithName("controller_application")
+var destinationServer string
 var targetNamespace string
 
 const applicationKind = "Application"
@@ -51,6 +52,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	var err error
 
+	destinationServer = GetDestinationServer()
 	targetNamespace, err = GetTargetNamespace()
 	if err != nil {
 		return fmt.Errorf("target namespace must be set: %w", err)
@@ -149,12 +151,12 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		if contains(instance.GetFinalizers(), applicationFinalizer) {
 			// Run finalization logic for our finalizer. If the finalization logic fails,
 			// don't remove the finalizer so that we can retry during the next reconciliation.
-			if err := r.finalizeApplication(ctx, appLogger, instance, app); err != nil {
+			if err := r.finalizeApplication(ctx, appLogger, app); err != nil {
 				return reconcile.Result{}, fmt.Errorf("failed to finalize application: %w", err)
 			}
 
 			// Remove the finalizer. Once all finalizers have been removed, the object will be deleted.
-			if err := r.removeFinalizer(ctx, appLogger, instance); err != nil {
+			if err := r.removeFinalizer(ctx, instance); err != nil {
 				return reconcile.Result{}, fmt.Errorf("failed to remove %s: %w", applicationFinalizer, err)
 			}
 		}
@@ -232,12 +234,12 @@ func (r *ReconcileApplication) addFinalizer(ctx context.Context, logger logr.Log
 	return r.client.Update(ctx, instance)
 }
 
-func (r *ReconcileApplication) removeFinalizer(ctx context.Context, logger logr.Logger, instance *opsv1alpha1.Application) error {
+func (r *ReconcileApplication) removeFinalizer(ctx context.Context, instance *opsv1alpha1.Application) error {
 	instance.SetFinalizers(remove(instance.GetFinalizers(), applicationFinalizer))
 	return r.client.Update(ctx, instance)
 }
 
-func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger logr.Logger, instance *opsv1alpha1.Application, app *argocdv1alpha1.Application) error {
+func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger logr.Logger, app *argocdv1alpha1.Application) error {
 	logger.Info("Running finalizer")
 
 	// Check if this Application exists
@@ -317,7 +319,7 @@ func newApplicationSpec(cr *opsv1alpha1.Application) argocdv1alpha1.ApplicationS
 	return argocdv1alpha1.ApplicationSpec{
 		Source: cr.Spec.Source,
 		Destination: argocdv1alpha1.ApplicationDestination{
-			Server:    "https://kubernetes.default.svc", // TODO
+			Server:    destinationServer,
 			Namespace: cr.Namespace,
 		},
 		Project:              cr.Namespace,
