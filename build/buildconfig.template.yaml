@@ -1,0 +1,40 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: "argo-application-operator"
+
+parameters:
+  - name: OPERATOR_VERSION
+    displayName: "Operator Version"
+    value: ""
+
+objects:
+  - apiVersion: image.openshift.io/v1
+    kind: ImageStream
+    metadata:
+      name: "argo-application-operator"
+
+  - apiVersion: build.openshift.io/v1
+    kind: BuildConfig
+    metadata:
+      name: "argo-application-operator"
+    spec:
+      completionDeadlineSeconds: 1200
+      runPolicy: SerialLatestOnly
+      source:
+        type: Git
+        git:
+          ref: "master"
+          uri: "https://github.com/mdvorak/argo-application-operator.git"
+      strategy:
+        type: Docker
+        dockerStrategy:
+          buildArgs:
+            - name: OPERATOR_VERSION
+              value: "${OPERATOR_VERSION}"
+          dockerfilePath: "build/Dockerfile_standalone"
+          forcePull: true
+      output:
+        to:
+          kind: ImageStreamTag
+          name: "argo-application-operator:latest"

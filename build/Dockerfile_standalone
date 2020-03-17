@@ -1,0 +1,29 @@
+# Build Image
+FROM golang:1.14 as builder
+
+ARG OPERATOR_MODULE="github.com/mdvorak/argo-application-operator"
+ARG OPERATOR_VERSION=""
+WORKDIR "/src"
+
+# Allow docker to cache modules
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source dir to workdir
+COPY build .
+RUN go build -o /go/bin/operator -ldflags="-X '${OPERATOR_MODULE}/version.Version=${OPERATOR_VERSION}'" -gcflags all=-trimpath=/src -asmflags all=-trimpath=/src ${OPERATOR_MODULE}/cmd/manager && \
+    chmod 755 /src/build/bin/entrypoint /go/bin/operator
+
+
+# Runtime Image
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
+
+ENV OPERATOR=/usr/local/bin/operator \
+    USER_UID=1001 \
+    USER_NAME=operator
+
+COPY --from=builder /go/bin/operator /src/build/bin \
+     /usr/local/bin/
+
+ENTRYPOINT ["/usr/local/bin/entrypoint"]
+USER ${USER_UID}
