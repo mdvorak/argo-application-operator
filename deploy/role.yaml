@@ -9,8 +9,6 @@ rules:
       - pods
       - services
       - services/finalizers
-      - endpoints
-      - persistentvolumeclaims
       - events
       - configmaps
       - secrets
@@ -30,12 +28,8 @@ rules:
       - replicasets
       - statefulsets
     verbs:
-      - create
-      - delete
       - get
       - list
-      - patch
-      - update
       - watch
   - apiGroups:
       - monitoring.coreos.com
@@ -62,19 +56,6 @@ rules:
       - apps
     resources:
       - replicasets
-      - deployments
     verbs:
       - get
-  - apiGroups:
-      - ops.csas.cz
-    resources:
-      - '*'
-      - applications
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
+
