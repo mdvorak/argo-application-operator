@@ -10,20 +10,31 @@ import (
 // ApplicationSpec defines the desired state of Application
 type ApplicationSpec struct {
 	// Source is a reference to the location ksonnet application definition
-	Source argocdv1alpha1.ApplicationSource `json:"source" protobuf:"bytes,1,opt,name=source"`
+	Source argocdv1alpha1.ApplicationSource `json:"source"`
 	// SyncPolicy controls when a sync will be performed
-	SyncPolicy *argocdv1alpha1.SyncPolicy `json:"syncPolicy,omitempty" protobuf:"bytes,4,name=syncPolicy"`
+	SyncPolicy *argocdv1alpha1.SyncPolicy `json:"syncPolicy,omitempty"`
 	// IgnoreDifferences controls resources fields which should be ignored during comparison
-	IgnoreDifferences []argocdv1alpha1.ResourceIgnoreDifferences `json:"ignoreDifferences,omitempty" protobuf:"bytes,5,name=ignoreDifferences"`
+	IgnoreDifferences []argocdv1alpha1.ResourceIgnoreDifferences `json:"ignoreDifferences,omitempty"`
 	// Infos contains a list of useful information (URLs, email addresses, and plain text) that relates to the application
-	Info []argocdv1alpha1.Info `json:"info,omitempty" protobuf:"bytes,6,name=info"`
+	Info []argocdv1alpha1.Info `json:"info,omitempty"`
 }
 
 // ApplicationStatus defines the observed state of Application
 type ApplicationStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	LastUpdated     string           `json:"lastUpdated,omitempty"`
+	OwnedReferences []OwnedReference `json:"ownedReferences,omitempty"`
+}
+
+// OwnedReference defines managed object
+type OwnedReference struct {
+	// API version of the referenced object
+	APIVersion string `json:"apiVersion"`
+	// Kind of the referenced object
+	Kind string `json:"kind"`
+	// Name of the referenced object
+	Name string `json:"name"`
+	// Namespace of the referenced object
+	Namespace string `json:"namespace"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

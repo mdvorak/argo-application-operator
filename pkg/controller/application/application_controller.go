@@ -7,6 +7,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"reflect"
 	"strings"
+	"time"
 
 	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	opsv1alpha1 "github.com/mdvorak/argo-application-operator/pkg/apis/ops/v1alpha1"
@@ -178,6 +179,12 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 			return reconcile.Result{}, fmt.Errorf("failed to create Application: %w", err)
 		}
 
+		// Update status
+		err = r.updateStatus(ctx, instance, app)
+		if err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to update status: %w", err)
+		}
+
 		// Application created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
@@ -203,6 +210,12 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 		err = r.client.Update(ctx, found)
 		if err != nil {
 			return reconcile.Result{}, fmt.Errorf("failed to update existing Application: %w", err)
+		}
+
+		// Update status
+		err = r.updateStatus(ctx, instance, found)
+		if err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to update status: %w", err)
 		}
 	}
 
@@ -249,6 +262,24 @@ func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger l
 	}
 
 	return nil
+}
+
+func (r *ReconcileApplication) updateStatus(ctx context.Context, cr *opsv1alpha1.Application, app *argocdv1alpha1.Application) error {
+	// Create new status
+	cr.Status = opsv1alpha1.ApplicationStatus{
+		LastUpdated: time.Now().Format(time.RFC3339),
+		OwnedReferences: []opsv1alpha1.OwnedReference{
+			{
+				APIVersion: app.APIVersion,
+				Kind:       app.Kind,
+				Name:       app.Name,
+				Namespace:  app.Namespace,
+			},
+		},
+	}
+
+	// Update
+	return r.client.Status().Update(ctx, cr)
 }
 
 func newApplication(cr *opsv1alpha1.Application) *argocdv1alpha1.Application {
