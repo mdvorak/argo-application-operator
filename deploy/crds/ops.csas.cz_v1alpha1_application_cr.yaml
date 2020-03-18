@@ -1,8 +1,0 @@
-apiVersion: ops.csas.cz/v1alpha1
-kind: Application
-metadata:
-  name: mdvorak-example
-spec:
-  source:
-    path: guestbook
-    repoURL: 'https://github.com/argoproj/argocd-example-apps'
