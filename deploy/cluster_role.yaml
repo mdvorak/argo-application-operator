@@ -11,6 +11,7 @@ rules:
       - get
       - list
       - watch
+      - update
   - apiGroups:
       - ops.csas.cz
     resources:
@@ -23,4 +24,12 @@ rules:
       - list
       - patch
       - update
+      - watch
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - applications
+    verbs:
+      - get
+      - list
       - watch
