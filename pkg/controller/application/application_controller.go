@@ -296,6 +296,10 @@ func newApplication(cr *opsv1alpha1.Application) *argocdv1alpha1.Application {
 			Namespace: targetNamespace,
 			Labels:    applicationLabels(cr),
 		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Application",
+			APIVersion: argocdv1alpha1.SchemeGroupVersion.String(),
+		},
 		Spec: newApplicationSpec(cr),
 	}
 }
