@@ -322,8 +322,6 @@ spec:
                 - namespace
                 type: object
               type: array
-          required:
-          - conditions
           type: object
       type: object
   version: v1alpha1
