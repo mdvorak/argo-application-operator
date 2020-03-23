@@ -24,7 +24,7 @@ type ApplicationSpec struct {
 // ApplicationStatus defines the observed state of Application
 type ApplicationStatus struct {
 	// Conditions represent the latest available observations of an object's state
-	Conditions status.Conditions `json:"conditions"`
+	Conditions status.Conditions `json:"conditions,omitempty"`
 	// References to created objects
 	References References `json:"references,omitempty"`
 }
