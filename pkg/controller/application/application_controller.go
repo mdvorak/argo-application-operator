@@ -226,32 +226,26 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileApplication) addFinalizer(ctx context.Context, logger logr.Logger, instance *opsv1alpha1.Application) error {
+func (r *ReconcileApplication) addFinalizer(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application) error {
 	logger.Info("Adding Finalizer")
 
-	// Prepare patch
-	patch := client.MergeFrom(instance)
-
 	// Copy object and set finalizers
-	newInstance := instance.DeepCopy()
+	newInstance := cr.DeepCopy()
 	newInstance.SetFinalizers(append(newInstance.GetFinalizers(), applicationFinalizer))
 
 	// Patch object
-	return r.client.Patch(ctx, instance, patch)
+	return r.client.Patch(ctx, newInstance, client.MergeFrom(cr))
 }
 
-func (r *ReconcileApplication) removeFinalizer(ctx context.Context, logger logr.Logger, instance *opsv1alpha1.Application) error {
+func (r *ReconcileApplication) removeFinalizer(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application) error {
 	logger.Info("Removing Finalizer")
 
-	// Prepare patch
-	patch := client.MergeFrom(instance)
-
 	// Copy object and set finalizers
-	newInstance := instance.DeepCopy()
+	newInstance := cr.DeepCopy()
 	newInstance.SetFinalizers(remove(newInstance.GetFinalizers(), applicationFinalizer))
 
 	// Patch object
-	return r.client.Patch(ctx, instance, patch)
+	return r.client.Patch(ctx, newInstance, client.MergeFrom(cr))
 }
 
 func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger logr.Logger, app *argocdv1alpha1.Application) error {
