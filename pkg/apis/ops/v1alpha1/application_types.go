@@ -2,6 +2,8 @@ package v1alpha1
 
 import (
 	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
+	"github.com/google/go-cmp/cmp"
+	"github.com/operator-framework/operator-sdk/pkg/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -21,12 +23,14 @@ type ApplicationSpec struct {
 
 // ApplicationStatus defines the observed state of Application
 type ApplicationStatus struct {
-	LastUpdated     string           `json:"lastUpdated,omitempty"`
-	OwnedReferences []OwnedReference `json:"ownedReferences,omitempty"`
+	// Conditions represent the latest available observations of an object's state
+	Conditions status.Conditions `json:"conditions"`
+	// References to created objects
+	References References `json:"references,omitempty"`
 }
 
-// OwnedReference defines managed object
-type OwnedReference struct {
+// Reference defines managed object
+type Reference struct {
 	// API version of the referenced object
 	APIVersion string `json:"apiVersion"`
 	// Kind of the referenced object
@@ -35,6 +39,50 @@ type OwnedReference struct {
 	Name string `json:"name"`
 	// Namespace of the referenced object
 	Namespace string `json:"namespace"`
+}
+
+// Array of Reference objects
+//
+// +kubebuilder:validation:Type=array
+type References []Reference
+
+// Add unique reference to the array
+func (a *References) SetReference(r Reference) bool {
+	// Find existing
+	for _, v := range *a {
+		if cmp.Equal(r, v) {
+			return false
+		}
+	}
+
+	// Add
+	*a = append(*a, r)
+	return true
+}
+
+// Add reference from the array
+func (a *References) RemoveReference(r Reference) bool {
+	// Find existing
+	for i, v := range *a {
+		if cmp.Equal(r, v) {
+			// Remove
+			*a = append((*a)[:i], (*a)[i+1:]...)
+			return true
+		}
+	}
+
+	// Not found
+	return false
+}
+
+// Create Reference object from Application.argocd.io
+func ReferenceFromApplication(obj *argocdv1alpha1.Application) Reference {
+	return Reference{
+		APIVersion: obj.APIVersion,
+		Kind:       obj.Kind,
+		Name:       obj.Name,
+		Namespace:  obj.Namespace,
+	}
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

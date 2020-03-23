@@ -6,6 +6,7 @@ require (
 	github.com/argoproj/argo-cd v1.4.2
 	github.com/argoproj/pkg v0.0.0-20200319004004-f46beff7cd54 // indirect
 	github.com/go-logr/logr v0.1.0
+	github.com/google/go-cmp v0.3.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/operator-framework/operator-sdk v0.16.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
