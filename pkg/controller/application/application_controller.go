@@ -11,7 +11,6 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -164,8 +163,6 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 }
 
 func (r *ReconcileApplication) reconcileApplication(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application) (reconcile.Result, status.ConditionType, error) {
-	var err error
-
 	// Define a new Argo Application object
 	app := newApplication(cr)
 	appLogger := logger.WithValues("Application.Namespace", app.Namespace, "Application.Name", app.Name)
@@ -173,25 +170,10 @@ func (r *ReconcileApplication) reconcileApplication(ctx context.Context, logger 
 	// Check if the instance is marked to be deleted, which is indicated by the deletion timestamp being set.
 	markedToBeDeleted := cr.GetDeletionTimestamp() != nil
 	if markedToBeDeleted {
+		// Delete target object
 		appLogger.Info("Application.ops.csas.cz is marked to be deleted")
-
-		if contains(cr.GetFinalizers(), applicationFinalizer) {
-			// Run finalization logic for our finalizer. If the finalization logic fails,
-			// don't remove the finalizer so that we can retry during the next reconciliation.
-			if err := r.finalizeApplication(ctx, appLogger, app); err != nil {
-				return reconcile.Result{}, conditionRemoved, fmt.Errorf("failed to finalize Application.ops.csas.cz: %w", err)
-			}
-
-			// Remove reference
-			r.removeReference(ctx, appLogger, cr, app)
-
-			// Remove the finalizer. Once all finalizers have been removed, the object will be deleted.
-			if err := r.removeFinalizer(ctx, appLogger, cr); err != nil {
-				return reconcile.Result{}, conditionRemoved, fmt.Errorf("failed to remove %s from Application.ops.csas.cz: %w", applicationFinalizer, err)
-			}
-		}
-
-		return reconcile.Result{}, conditionRemoved, nil
+		result, err := r.reconcileDeletion(ctx, appLogger, cr, app)
+		return result, conditionRemoved, err
 	}
 
 	// Add finalizer for this CR
@@ -201,52 +183,65 @@ func (r *ReconcileApplication) reconcileApplication(ctx context.Context, logger 
 		}
 	}
 
+	// Update application
+	result, err := r.reconcileUpdate(ctx, appLogger, cr, app)
+	return result, conditionAvailable, err
+}
+
+func (r *ReconcileApplication) reconcileUpdate(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, app *argocdv1alpha1.Application) (reconcile.Result, error) {
 	// Check if this Application already exists
 	found := &argocdv1alpha1.Application{}
-	err = r.client.Get(ctx, types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, found)
+	err := r.client.Get(ctx, types.NamespacedName{Name: app.Name, Namespace: app.Namespace}, found)
 	if err != nil && k8serrors.IsNotFound(err) {
-		appLogger.Info("creating a new Application.argocd.io")
+		logger.Info("creating a new Application.argocd.io")
 		err = r.client.Create(ctx, app)
 		if err != nil {
-			return reconcile.Result{}, conditionAvailable, fmt.Errorf("failed to create Application.argocd.io: %w", err)
+			return reconcile.Result{}, fmt.Errorf("failed to create Application.argocd.io: %w", err)
 		}
 
 		// Add reference
-		r.setReference(ctx, appLogger, cr, app)
+		r.setReference(ctx, logger, cr, app)
 
 		// Application created successfully - don't requeue
-		return reconcile.Result{}, conditionAvailable, nil
+		return reconcile.Result{}, nil
 	} else if err != nil {
-		return reconcile.Result{}, conditionAvailable, fmt.Errorf("failed to get existing Application.argocd.io: %w", err)
+		return reconcile.Result{}, fmt.Errorf("failed to get existing Application.argocd.io: %w", err)
 	}
 
 	// Add reference
-	r.setReference(ctx, appLogger, cr, found)
+	r.setReference(ctx, logger, cr, found)
 
 	// Application exists, update
-	isChanged := false
-	for label, value := range app.Labels {
-		if found.Labels[label] != value {
-			found.Labels[label] = value
-			isChanged = true
-		}
-	}
-	if !reflect.DeepEqual(found.Spec, app.Spec) {
-		found.Spec = app.Spec
-		isChanged = true
-	}
-
-	// Change detected
-	if isChanged {
-		appLogger.Info("updating Application.argocd.io")
+	if patchApplication(found, app) {
+		logger.Info("updating existing Application.argocd.io")
 		err = r.client.Update(ctx, found)
 		if err != nil {
-			return reconcile.Result{}, conditionAvailable, fmt.Errorf("failed to update existing Application.argocd.io: %w", err)
+			return reconcile.Result{}, fmt.Errorf("failed to update existing Application.argocd.io: %w", err)
 		}
 	}
 
 	// Application already exists - don't requeue
-	return reconcile.Result{}, conditionAvailable, nil
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileApplication) reconcileDeletion(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, app *argocdv1alpha1.Application) (reconcile.Result, error) {
+	if contains(cr.GetFinalizers(), applicationFinalizer) {
+		// Run finalization logic for our finalizer. If the finalization logic fails,
+		// don't remove the finalizer so that we can retry during the next reconciliation.
+		if err := r.finalizeApplication(ctx, logger, app); err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to finalize Application.ops.csas.cz: %w", err)
+		}
+
+		// Remove reference
+		r.removeReference(ctx, logger, cr, app)
+
+		// Remove the finalizer. Once all finalizers have been removed, the object will be deleted.
+		if err := r.removeFinalizer(ctx, logger, cr); err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to remove %s from Application.ops.csas.cz: %w", applicationFinalizer, err)
+		}
+	}
+
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileApplication) addFinalizer(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application) error {

@@ -5,6 +5,7 @@ import (
 	opsv1alpha1 "github.com/mdvorak/argo-application-operator/pkg/apis/ops/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"reflect"
 	"strings"
 )
 
@@ -60,4 +61,22 @@ func newApplicationSpec(cr *opsv1alpha1.Application) argocdv1alpha1.ApplicationS
 		Info:                 cr.Spec.Info,
 		RevisionHistoryLimit: nil,
 	}
+}
+
+func patchApplication(obj *argocdv1alpha1.Application, source *argocdv1alpha1.Application) (change bool) {
+	// Compare and update labels
+	for label, value := range source.Labels {
+		if obj.Labels[label] != value {
+			obj.Labels[label] = value
+			change = true
+		}
+	}
+
+	// Compare and update spec
+	if !reflect.DeepEqual(obj.Spec, source.Spec) {
+		obj.Spec = source.Spec
+		change = true
+	}
+
+	return
 }
