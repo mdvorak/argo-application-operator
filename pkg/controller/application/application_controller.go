@@ -26,8 +26,7 @@ var targetNamespace string
 
 const applicationKind = "Application"
 const applicationFinalizer = "finalizer.application.ops.csas.cz"
-const conditionAvailable = "Available"
-const conditionRemoved = "Removed"
+const conditionTypeAvailable = "Available"
 
 const ownerApiGroupLabel = "application.ops.csas.cz/owner-api-group"
 const ownerApiVersionLabel = "application.ops.csas.cz/owner-api-version"
@@ -140,29 +139,17 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	// Reconciliation logic
-	result, conditionType, err := r.reconcileApplication(ctx, reqLogger, instance)
+	result, available, err := r.reconcileApplication(ctx, reqLogger, instance)
 
 	// Update status
-	if err == nil {
-		r.setCondition(ctx, reqLogger, instance, status.Condition{
-			Type:    conditionType,
-			Status:  corev1.ConditionTrue,
-			Message: "reconciliation completed",
-		})
-	} else {
-		r.setCondition(ctx, reqLogger, instance, status.Condition{
-			Type:    conditionType,
-			Status:  corev1.ConditionFalse,
-			Message: err.Error(),
-		})
-	}
+	r.setCondition(ctx, reqLogger, instance, r.newAvailableCondition(available, err))
 
 	// Return
 	reqLogger.Info("reconcile finished")
 	return result, err
 }
 
-func (r *ReconcileApplication) reconcileApplication(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application) (reconcile.Result, status.ConditionType, error) {
+func (r *ReconcileApplication) reconcileApplication(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application) (reconcile.Result, bool, error) {
 	// Define a new Argo Application object
 	app := newApplication(cr)
 	appLogger := logger.WithValues("Application.Namespace", app.Namespace, "Application.Name", app.Name)
@@ -173,19 +160,20 @@ func (r *ReconcileApplication) reconcileApplication(ctx context.Context, logger 
 		// Delete target object
 		appLogger.Info("Application.ops.csas.cz is marked to be deleted")
 		result, err := r.reconcileDeletion(ctx, appLogger, cr, app)
-		return result, conditionRemoved, err
+
+		return result, false, err
 	}
 
 	// Add finalizer for this CR
 	if !contains(cr.GetFinalizers(), applicationFinalizer) {
 		if err := r.addFinalizer(ctx, appLogger, cr); err != nil {
-			return reconcile.Result{}, conditionAvailable, fmt.Errorf("failed to add %s to Application.ops.csas.cz: %w", applicationFinalizer, err)
+			return reconcile.Result{}, false, fmt.Errorf("failed to add %s to Application.ops.csas.cz: %w", applicationFinalizer, err)
 		}
 	}
 
 	// Update application
 	result, err := r.reconcileUpdate(ctx, appLogger, cr, app)
-	return result, conditionAvailable, err
+	return result, true, err
 }
 
 func (r *ReconcileApplication) reconcileUpdate(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, app *argocdv1alpha1.Application) (reconcile.Result, error) {
@@ -293,6 +281,36 @@ func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger l
 	return nil
 }
 
+// Create new Condition of type Available with human readable message
+func (r *ReconcileApplication) newAvailableCondition(available bool, err error) status.Condition {
+	if err != nil {
+		// Error
+		return status.Condition{
+			Type:    conditionTypeAvailable,
+			Status:  corev1.ConditionFalse,
+			Reason:  "Failed",
+			Message: err.Error(),
+		}
+	} else if available {
+		// Exists
+		return status.Condition{
+			Type:    conditionTypeAvailable,
+			Status:  corev1.ConditionTrue,
+			Reason:  "Created",
+			Message: "reconciliation successful",
+		}
+	} else {
+		// Deleted
+		return status.Condition{
+			Type:    conditionTypeAvailable,
+			Status:  corev1.ConditionFalse,
+			Reason:  "Deleted",
+			Message: "reconciliation successful",
+		}
+	}
+}
+
+// Store a Condition into CR status.conditions
 func (r *ReconcileApplication) setCondition(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, cond status.Condition) {
 	// Copy instance for comparison
 	newInstance := cr.DeepCopy()
@@ -306,6 +324,7 @@ func (r *ReconcileApplication) setCondition(ctx context.Context, logger logr.Log
 	}
 }
 
+// Store a Reference to given Application into CR status.references
 func (r *ReconcileApplication) setReference(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, app *argocdv1alpha1.Application) {
 	// Copy instance for comparison
 	newInstance := cr.DeepCopy()
@@ -319,6 +338,7 @@ func (r *ReconcileApplication) setReference(ctx context.Context, logger logr.Log
 	}
 }
 
+// Remove a Reference to given Application from CR status.references
 func (r *ReconcileApplication) removeReference(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, app *argocdv1alpha1.Application) {
 	// Copy instance for comparison
 	newInstance := cr.DeepCopy()

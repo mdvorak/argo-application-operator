@@ -15,7 +15,8 @@ TODO metrics, logging
 
 ## Development
 
-TODO
+Standard [operator sdk user guide](https://github.com/operator-framework/operator-sdk/blob/master/doc/user-guide.md)
+applies, read it first.
 
 ### Project Structure
 
@@ -36,5 +37,4 @@ Run `operator-sdk build <image>:<tag>` and `docker push <image>:<tag>` to publis
 Run `TARGET_NAMESPACE=<yourns> operator-sdk run --local --namespace <sourcens>`
 
 Note that when another operator instance runs in the cluster, additional unnecessary reconciliation loops might be 
-triggered, and status will be updated by both.
-
+triggered, and status will be updated by both. But an operator should produce expected output anyway.
