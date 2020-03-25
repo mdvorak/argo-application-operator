@@ -187,6 +187,11 @@ func (r *ReconcileApplication) reconcileUpdate(ctx context.Context, logger logr.
 			return reconcile.Result{}, fmt.Errorf("failed to create Application.argocd.io: %w", err)
 		}
 
+		// WORKAROUND: sometimes Create removes TypeMeta information, dunno why
+		if app.Kind == "" {
+			app.TypeMeta = newApplicationTypeMeta()
+		}
+
 		// Add reference
 		r.setReference(ctx, logger, cr, app)
 
