@@ -33,13 +33,15 @@ func newApplicationTypeMeta() metav1.TypeMeta {
 	}
 }
 
-func applicationLabels(cr *opsv1alpha1.Application) map[string]string {
+func applicationLabels(owner *opsv1alpha1.Application) map[string]string {
+	gvk := owner.GroupVersionKind()
+
 	labels := map[string]string{
-		ownerApiGroupLabel:   opsv1alpha1.SchemeGroupVersion.Group,
-		ownerApiVersionLabel: opsv1alpha1.SchemeGroupVersion.Version,
-		ownerKindLabel:       applicationKind,
-		ownerNamespaceLabel:  cr.Namespace,
-		ownerNameLabel:       cr.Name,
+		ownerApiGroupLabel:   gvk.Group,
+		ownerApiVersionLabel: gvk.Version,
+		ownerKindLabel:       gvk.Kind,
+		ownerNamespaceLabel:  owner.Namespace,
+		ownerNameLabel:       owner.Name,
 	}
 
 	// Get name, ignore error
@@ -83,4 +85,13 @@ func patchApplication(obj *argocdv1alpha1.Application, source *argocdv1alpha1.Ap
 	}
 
 	return
+}
+
+func isApplicationOwnedBy(obj *argocdv1alpha1.Application, owner *opsv1alpha1.Application) bool {
+	gvk := owner.GroupVersionKind()
+	return obj.Labels[ownerApiGroupLabel] != gvk.Group ||
+		obj.Labels[ownerApiVersionLabel] != gvk.Version ||
+		obj.Labels[ownerKindLabel] != gvk.Kind ||
+		obj.Labels[ownerNamespaceLabel] != owner.Namespace ||
+		obj.Labels[ownerNameLabel] != owner.Name
 }

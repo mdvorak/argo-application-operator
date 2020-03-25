@@ -201,6 +201,12 @@ func (r *ReconcileApplication) reconcileUpdate(ctx context.Context, logger logr.
 		return reconcile.Result{}, fmt.Errorf("failed to get existing Application.argocd.io: %w", err)
 	}
 
+	// Verify ownership
+	if isApplicationOwnedBy(found, cr) {
+		// Not owned by this CR! Do not requeue, fail
+		return reconcile.Result{}, fmt.Errorf("object %s.%s \"%s\" in namespace \"%s\" already exists, and it is not owned by this object", found.Kind, found.GroupVersionKind().Group, found.Name, found.Namespace)
+	}
+
 	// Add reference
 	r.setReference(ctx, logger, cr, found)
 
