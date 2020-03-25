@@ -101,7 +101,7 @@ func main() {
 
 	ctx := context.TODO()
 	// Become the leader before proceeding
-	err = leader.Become(ctx, "argo-application-operator-lock")
+	err = leader.Become(ctx, "csas-application-operator-lock")
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)

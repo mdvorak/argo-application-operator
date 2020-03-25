@@ -1,24 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: argo-application-operator
+  name: csas-application-operator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: argo-application-operator
+      name: csas-application-operator
   template:
     metadata:
       labels:
-        name: argo-application-operator
+        name: csas-application-operator
     spec:
-      serviceAccountName: argo-application-operator
+      serviceAccountName: csas-application-operator
       containers:
-        - name: argo-application-operator
+        - name: csas-application-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
           command:
-            - argo-application-operator
+            - csas-application-operator
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
@@ -28,7 +27,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
-              value: "argo-application-operator"
+              value: "csas-application-operator"
             - name: TARGET_NAMESPACE
               valueFrom:
                 fieldRef:

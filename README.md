@@ -29,7 +29,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   labels:
-    app.kubernetes.io/managed-by: argo-application-operator
+    app.kubernetes.io/managed-by: csas-application-operator
     application.ops.csas.cz/owner-api-group: ops.csas.cz
     application.ops.csas.cz/owner-api-version: v1alpha1
     application.ops.csas.cz/owner-kind: Application
