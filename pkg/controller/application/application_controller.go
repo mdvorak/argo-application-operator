@@ -315,7 +315,8 @@ func (r *ReconcileApplication) setCondition(ctx context.Context, logger logr.Log
 	// Update only if changed
 	if newInstance.Status.Conditions.SetCondition(cond) {
 		// Patch object
-		if err := r.client.Status().Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil {
+		if err := r.client.Status().Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil && !k8serrors.IsNotFound(err) {
+			// Log error without failing - note that NotFound is ignored silently
 			logger.Error(err, "failed to update status of Application.ops.csas.cz")
 		}
 	}
@@ -330,6 +331,7 @@ func (r *ReconcileApplication) setReference(ctx context.Context, logger logr.Log
 	if newInstance.Status.References.SetReference(opsv1alpha1.ReferenceFromApplication(app)) {
 		// Patch object
 		if err := r.client.Status().Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil {
+			// Log error without failing
 			logger.Error(err, "failed to add reference to Application.ops.csas.cz")
 		}
 	}
