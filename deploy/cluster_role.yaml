@@ -12,6 +12,7 @@ rules:
       - list
       - watch
       - update
+      - patch
   - apiGroups:
       - ops.csas.cz
     resources:
