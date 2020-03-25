@@ -220,9 +220,6 @@ func (r *ReconcileApplication) reconcileDeletion(ctx context.Context, logger log
 			return reconcile.Result{}, fmt.Errorf("failed to finalize Application.ops.csas.cz: %w", err)
 		}
 
-		// Remove reference
-		r.removeReference(ctx, logger, cr, app)
-
 		// Remove the finalizer. Once all finalizers have been removed, the object will be deleted.
 		if err := r.removeFinalizer(ctx, logger, cr); err != nil {
 			return reconcile.Result{}, fmt.Errorf("failed to remove %s from Application.ops.csas.cz: %w", applicationFinalizer, err)
@@ -334,20 +331,6 @@ func (r *ReconcileApplication) setReference(ctx context.Context, logger logr.Log
 		// Patch object
 		if err := r.client.Status().Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil {
 			logger.Error(err, "failed to add reference to Application.ops.csas.cz")
-		}
-	}
-}
-
-// Remove a Reference to given Application from CR status.references
-func (r *ReconcileApplication) removeReference(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, app *argocdv1alpha1.Application) {
-	// Copy instance for comparison
-	newInstance := cr.DeepCopy()
-
-	// Update only if changed
-	if newInstance.Status.References.RemoveReference(opsv1alpha1.ReferenceFromApplication(app)) {
-		// Patch object
-		if err := r.client.Status().Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil {
-			logger.Error(err, "failed to remove reference from Application.ops.csas.cz")
 		}
 	}
 }
