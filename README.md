@@ -7,8 +7,8 @@ system namespace directly.
 ## Description
 
 During standard operation, operator watches all namespaces in a cluster for objects `Application.ops.csas.cz`.
-They share `spec.source` configuration, which is copied 1-1 to target namespace into `Application.argocd.io` objects. It handles
-properly setting of AppProject, destination namespace etc.
+They share `spec.source` configuration, which is copied to a target namespace into `Application.argocd.io` objects. It handles
+properly setting of a project, destination etc.
 
 For example, following object created in namespace `foo`
 ```yaml
@@ -56,8 +56,39 @@ TODO
 
 ### Operations
 
-TODO status
-TODO metrics, logging
+Operator logs in JSON format into stdout, which means logs are available in standard cluster logging solution (Elastic).
+
+It also exposes metrics endpoint, see 
+[operator sdk metrics readme](https://github.com/operator-framework/operator-sdk/blob/master/doc/user/metrics/README.md).
+
+In addition, every `Application.ops.csas.cz` have status updated with conditions (either success or error message), and
+list of created ArgoCD Application objects. See example
+
+```yaml
+apiVersion: ops.csas.cz/v1alpha1
+kind: Application
+metadata:
+  finalizers:
+    - finalizer.application.ops.csas.cz
+  name: guestbook
+  namespace: foo
+spec:
+  source:
+    path: guestbook
+    repoURL: 'https://github.com/argoproj/argocd-example-apps'
+status:
+  conditions:
+    - lastTransitionTime: '2020-03-25T10:55:06Z'
+      message: reconciliation successful
+      reason: Created
+      status: 'True'
+      type: Available
+  references:
+    - apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      name: foo-guestbook
+      namespace: argo
+```
 
 ## Development
 
