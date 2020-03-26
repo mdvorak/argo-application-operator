@@ -167,7 +167,7 @@ func (r *ReconcileApplication) reconcileApplication(ctx context.Context, logger 
 	// Add finalizer for this CR
 	if !contains(cr.GetFinalizers(), applicationFinalizer) {
 		logger.Info("adding finalizer to Application.ops.csas.cz")
-		if err := r.setFinalizers(ctx, logger, cr, append(cr.GetFinalizers(), applicationFinalizer)); err != nil {
+		if err := r.setFinalizers(ctx, cr, append(cr.GetFinalizers(), applicationFinalizer)); err != nil {
 			return reconcile.Result{}, false, fmt.Errorf("failed to add %s to Application.ops.csas.cz: %w", applicationFinalizer, err)
 		}
 	}
@@ -234,7 +234,7 @@ func (r *ReconcileApplication) reconcileDeletion(ctx context.Context, logger log
 
 		// Remove the finalizer. Once all finalizers have been removed, the object will be deleted.
 		logger.Info("removing finalizer from Application.ops.csas.cz")
-		if err := r.setFinalizers(ctx, logger, cr, remove(cr.GetFinalizers(), applicationFinalizer)); err != nil {
+		if err := r.setFinalizers(ctx, cr, remove(cr.GetFinalizers(), applicationFinalizer)); err != nil {
 			return reconcile.Result{}, fmt.Errorf("failed to remove %s from Application.ops.csas.cz: %w", applicationFinalizer, err)
 		}
 	}
@@ -334,7 +334,7 @@ func (r *ReconcileApplication) setReference(ctx context.Context, logger logr.Log
 	}
 }
 
-func (r *ReconcileApplication) setFinalizers(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, newFinalizers []string) error {
+func (r *ReconcileApplication) setFinalizers(ctx context.Context, cr *opsv1alpha1.Application, newFinalizers []string) error {
 	// Copy instance for patch
 	newInstance := cr.DeepCopy()
 	newInstance.SetFinalizers(newFinalizers)
