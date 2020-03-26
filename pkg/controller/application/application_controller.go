@@ -248,7 +248,13 @@ func (r *ReconcileApplication) addFinalizer(ctx context.Context, logger logr.Log
 	newInstance.SetFinalizers(append(newInstance.GetFinalizers(), applicationFinalizer))
 
 	// Patch object
-	return r.client.Patch(ctx, newInstance, client.MergeFrom(cr))
+	if err := r.client.Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil {
+		return err
+	}
+
+	// Propagate change to original instance
+	cr.SetFinalizers(newInstance.GetFinalizers())
+	return nil
 }
 
 func (r *ReconcileApplication) removeFinalizer(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application) error {
@@ -259,7 +265,13 @@ func (r *ReconcileApplication) removeFinalizer(ctx context.Context, logger logr.
 	newInstance.SetFinalizers(remove(newInstance.GetFinalizers(), applicationFinalizer))
 
 	// Patch object
-	return r.client.Patch(ctx, newInstance, client.MergeFrom(cr))
+	if err := r.client.Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil {
+		return err
+	}
+
+	// Propagate change to original instance
+	cr.SetFinalizers(newInstance.GetFinalizers())
+	return nil
 }
 
 func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger logr.Logger, app *argocdv1alpha1.Application) error {
@@ -329,6 +341,9 @@ func (r *ReconcileApplication) setCondition(ctx context.Context, logger logr.Log
 		if err := r.client.Status().Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil && !k8serrors.IsNotFound(err) {
 			// Log error without failing - note that NotFound is ignored silently
 			logger.Error(err, "failed to update status of Application.ops.csas.cz")
+		} else if err != nil {
+			// Update original instance
+			cr.Status = newInstance.Status
 		}
 	}
 }
@@ -344,6 +359,9 @@ func (r *ReconcileApplication) setReference(ctx context.Context, logger logr.Log
 		if err := r.client.Status().Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil {
 			// Log error without failing
 			logger.Error(err, "failed to add reference to Application.ops.csas.cz")
+		} else {
+			// Update original instance
+			cr.Status = newInstance.Status
 		}
 	}
 }
