@@ -5,7 +5,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: csas-application-operator
-    namespace: argocd
+    namespace: argo-app
 roleRef:
   kind: ClusterRole
   name: csas-application-operator
