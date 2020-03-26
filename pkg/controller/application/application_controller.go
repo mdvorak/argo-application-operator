@@ -242,21 +242,6 @@ func (r *ReconcileApplication) reconcileDeletion(ctx context.Context, logger log
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileApplication) setFinalizers(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, newFinalizers []string) error {
-	// Copy instance for patch
-	newInstance := cr.DeepCopy()
-	newInstance.SetFinalizers(newFinalizers)
-
-	// Patch object
-	if err := r.client.Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil {
-		return err
-	}
-
-	// Propagate change to original instance
-	cr.SetFinalizers(newFinalizers)
-	return nil
-}
-
 func (r *ReconcileApplication) finalizeApplication(ctx context.Context, logger logr.Logger, app *argocdv1alpha1.Application) error {
 	logger.Info("running finalizer " + applicationFinalizer)
 
@@ -347,4 +332,19 @@ func (r *ReconcileApplication) setReference(ctx context.Context, logger logr.Log
 			cr.Status = newInstance.Status
 		}
 	}
+}
+
+func (r *ReconcileApplication) setFinalizers(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, newFinalizers []string) error {
+	// Copy instance for patch
+	newInstance := cr.DeepCopy()
+	newInstance.SetFinalizers(newFinalizers)
+
+	// Patch object
+	if err := r.client.Patch(ctx, newInstance, client.MergeFrom(cr)); err != nil {
+		return err
+	}
+
+	// Propagate change to original instance
+	cr.SetFinalizers(newFinalizers)
+	return nil
 }
