@@ -16,6 +16,8 @@ spec:
       containers:
         - name: csas-application-operator
           # Replace this with the built image name
+          image: REPLACE_IMAGE
+          # Replace this with the built image name
           command:
             - csas-application-operator
           imagePullPolicy: Always
