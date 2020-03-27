@@ -114,7 +114,9 @@ type ReconcileApplication struct {
 
 // Reconcile reads that state of the cluster for a Application object and makes changes based on the state read
 // and what is in the Application.Spec
-// TODO docs
+//
+// Manages Application.argocd.io object with corresponding specification in namespace set by TARGET_NAMESPACE env var.
+//
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
@@ -142,7 +144,7 @@ func (r *ReconcileApplication) Reconcile(request reconcile.Request) (reconcile.R
 	result, available, err := r.reconcileApplication(ctx, reqLogger, instance)
 
 	// Update status
-	r.setCondition(ctx, reqLogger, instance, r.newAvailableCondition(available, err))
+	r.updateCondition(ctx, reqLogger, instance, r.newAvailableCondition(available, err))
 
 	// Return
 	reqLogger.Info("reconcile finished")
@@ -167,7 +169,7 @@ func (r *ReconcileApplication) reconcileApplication(ctx context.Context, logger 
 	// Add finalizer for this CR
 	if !contains(cr.GetFinalizers(), applicationFinalizer) {
 		logger.Info("adding finalizer to Application.ops.csas.cz")
-		if err := r.setFinalizers(ctx, cr, append(cr.GetFinalizers(), applicationFinalizer)); err != nil {
+		if err := r.updateFinalizers(ctx, cr, append(cr.GetFinalizers(), applicationFinalizer)); err != nil {
 			return reconcile.Result{}, false, fmt.Errorf("failed to add %s to Application.ops.csas.cz: %w", applicationFinalizer, err)
 		}
 	}
@@ -194,7 +196,7 @@ func (r *ReconcileApplication) reconcileUpdate(ctx context.Context, logger logr.
 		}
 
 		// Add reference
-		r.setReference(ctx, logger, cr, app)
+		r.addReference(ctx, logger, cr, app)
 
 		// Application created successfully - don't requeue
 		return reconcile.Result{}, nil
@@ -209,7 +211,7 @@ func (r *ReconcileApplication) reconcileUpdate(ctx context.Context, logger logr.
 	}
 
 	// Add reference
-	r.setReference(ctx, logger, cr, found)
+	r.addReference(ctx, logger, cr, found)
 
 	// Application exists, update
 	if patchApplication(found, app) {
@@ -234,7 +236,7 @@ func (r *ReconcileApplication) reconcileDeletion(ctx context.Context, logger log
 
 		// Remove the finalizer. Once all finalizers have been removed, the object will be deleted.
 		logger.Info("removing finalizer from Application.ops.csas.cz")
-		if err := r.setFinalizers(ctx, cr, remove(cr.GetFinalizers(), applicationFinalizer)); err != nil {
+		if err := r.updateFinalizers(ctx, cr, remove(cr.GetFinalizers(), applicationFinalizer)); err != nil {
 			return reconcile.Result{}, fmt.Errorf("failed to remove %s from Application.ops.csas.cz: %w", applicationFinalizer, err)
 		}
 	}
@@ -299,7 +301,7 @@ func (r *ReconcileApplication) newAvailableCondition(available bool, err error) 
 }
 
 // Store a Condition into CR status.conditions
-func (r *ReconcileApplication) setCondition(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, cond status.Condition) {
+func (r *ReconcileApplication) updateCondition(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, cond status.Condition) {
 	// Copy instance for comparison
 	newInstance := cr.DeepCopy()
 
@@ -317,7 +319,7 @@ func (r *ReconcileApplication) setCondition(ctx context.Context, logger logr.Log
 }
 
 // Store a Reference to given Application into CR status.references
-func (r *ReconcileApplication) setReference(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, app *argocdv1alpha1.Application) {
+func (r *ReconcileApplication) addReference(ctx context.Context, logger logr.Logger, cr *opsv1alpha1.Application, app *argocdv1alpha1.Application) {
 	// Copy instance for comparison
 	newInstance := cr.DeepCopy()
 
@@ -334,7 +336,7 @@ func (r *ReconcileApplication) setReference(ctx context.Context, logger logr.Log
 	}
 }
 
-func (r *ReconcileApplication) setFinalizers(ctx context.Context, cr *opsv1alpha1.Application, newFinalizers []string) error {
+func (r *ReconcileApplication) updateFinalizers(ctx context.Context, cr *opsv1alpha1.Application, newFinalizers []string) error {
 	// Copy instance for patch
 	newInstance := cr.DeepCopy()
 	newInstance.SetFinalizers(newFinalizers)
