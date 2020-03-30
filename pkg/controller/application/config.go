@@ -10,7 +10,7 @@ import (
 )
 
 const DestinationServerEnvVar = "DESTINATION_SERVER"
-const TargetNamespaceEnvVar = "TARGET_NAMESPACE"
+const ArgoNamespaceEnvVar = "ARGO_NAMESPACE"
 
 const DestinationServerDefault = "https://kubernetes.default.svc"
 
@@ -23,20 +23,20 @@ func GetDestinationServer() string {
 	}
 }
 
-func GetTargetNamespace() (string, error) {
-	if value, ok := os.LookupEnv(TargetNamespaceEnvVar); ok && len(value) > 0 {
+func GetArgoNamespace() (string, error) {
+	if value, ok := os.LookupEnv(ArgoNamespaceEnvVar); ok && len(value) > 0 {
 		return value, nil
 	} else {
-		return "", errors.New(fmt.Sprintf("%s not set", TargetNamespaceEnvVar))
+		return "", errors.New(fmt.Sprintf("%s not set", ArgoNamespaceEnvVar))
 	}
 }
 
-func AddTargetNamespaceToWatched() error {
+func AddArgoNamespaceToWatched() error {
 	log := logf.Log.WithName("controller")
 
-	targetNamespace, ok := os.LookupEnv(TargetNamespaceEnvVar)
+	argoNamespace, ok := os.LookupEnv(ArgoNamespaceEnvVar)
 	if !ok {
-		return errors.New(fmt.Sprintf("%s not set, cannot add it as watched namespace", TargetNamespaceEnvVar))
+		return errors.New(fmt.Sprintf("%s not set, cannot add it as watched namespace", ArgoNamespaceEnvVar))
 	}
 
 	watchNamespace, ok := os.LookupEnv(k8sutil.WatchNamespaceEnvVar)
@@ -46,14 +46,14 @@ func AddTargetNamespaceToWatched() error {
 	}
 
 	// Add to env variable
-	if !contains(strings.Split(watchNamespace, ","), targetNamespace) {
+	if !contains(strings.Split(watchNamespace, ","), argoNamespace) {
 		// Set env var
-		if err := os.Setenv(k8sutil.WatchNamespaceEnvVar, watchNamespace+","+targetNamespace); err != nil {
+		if err := os.Setenv(k8sutil.WatchNamespaceEnvVar, watchNamespace+","+argoNamespace); err != nil {
 			// Failed
 			return err
 		} else {
 			// OK
-			log.Info(fmt.Sprintf("%s '%s' is not part of %s, forcefully added", TargetNamespaceEnvVar, targetNamespace, k8sutil.WatchNamespaceEnvVar))
+			log.Info(fmt.Sprintf("%s '%s' is not part of %s, forcefully added", ArgoNamespaceEnvVar, argoNamespace, k8sutil.WatchNamespaceEnvVar))
 		}
 	}
 

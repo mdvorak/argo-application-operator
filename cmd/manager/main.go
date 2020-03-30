@@ -71,10 +71,10 @@ func main() {
 
 	printVersion()
 
-	// Target namespace needs to be watched as well
-	err := application.AddTargetNamespaceToWatched()
+	// Argo namespace needs to be watched as well
+	err := application.AddArgoNamespaceToWatched()
 	if err != nil {
-		log.Error(err, "Failed to add target namespace to watched namespace list")
+		log.Error(err, "Failed to add argo namespace to watched namespace list")
 		os.Exit(1)
 	}
 
@@ -85,12 +85,12 @@ func main() {
 	}
 	log.Info(fmt.Sprintf("Watch namespace '%s'", namespace))
 
-	targetNamespace, err := application.GetTargetNamespace()
+	argoNamespace, err := application.GetArgoNamespace()
 	if err != nil {
-		log.Error(err, "Failed to get target namespace")
+		log.Error(err, "Failed to get argo namespace")
 		os.Exit(1)
 	}
-	log.Info(fmt.Sprintf("Target namespace '%s'", targetNamespace))
+	log.Info(fmt.Sprintf("Argo namespace '%s'", argoNamespace))
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()

@@ -18,7 +18,7 @@ func newApplication(cr *opsv1alpha1.Application) *argocdv1alpha1.Application {
 	return &argocdv1alpha1.Application{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: targetNamespace,
+			Namespace: argoNamespace,
 			Labels:    applicationLabels(cr),
 		},
 		TypeMeta: newApplicationTypeMeta(),

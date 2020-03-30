@@ -7,7 +7,7 @@ system namespace directly.
 ## Description
 
 During standard operation, operator watches all namespaces in a cluster for objects `Application.ops.csas.cz`.
-They share `spec.source` configuration, which is copied to a target namespace into `Application.argocd.io` objects. It handles
+They share `spec.source` configuration, which is copied to a argo namespace into `Application.argocd.io` objects. It handles
 properly setting of a project, destination etc.
 
 For example, following object created in namespace `foo`
@@ -111,7 +111,7 @@ Run `operator-sdk build <image>:<tag>` and `docker push <image>:<tag>` to publis
 
 ### Local Testing
 
-Run `TARGET_NAMESPACE=<yourns> operator-sdk run --local --namespace <sourcens>`
+Run `ARGO_NAMESPACE=<yourns> operator-sdk run --local --namespace <sourcens>`
 
 Note that when another operator instance runs in the cluster, additional unnecessary reconciliation loops might be 
 triggered, and status will be updated by both. But an operator should produce expected output anyway.

@@ -22,7 +22,7 @@ import (
 
 var log = logf.Log.WithName("controller_application")
 var destinationServer string
-var targetNamespace string
+var argoNamespace string
 
 const applicationKind = "Application"
 const applicationFinalizer = "finalizer.application.ops.csas.cz"
@@ -51,9 +51,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	var err error
 
 	destinationServer = GetDestinationServer()
-	targetNamespace, err = GetTargetNamespace()
+	argoNamespace, err = GetArgoNamespace()
 	if err != nil {
-		return fmt.Errorf("target namespace must be set: %w", err)
+		return fmt.Errorf("argo namespace must be set: %w", err)
 	}
 
 	// Create a new controller
@@ -115,7 +115,7 @@ type ReconcileApplication struct {
 // Reconcile reads that state of the cluster for a Application object and makes changes based on the state read
 // and what is in the Application.Spec
 //
-// Manages Application.argocd.io object with corresponding specification in namespace set by TARGET_NAMESPACE env var.
+// Manages Application.argocd.io object with corresponding specification in namespace set by ARGO_NAMESPACE env var.
 //
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
