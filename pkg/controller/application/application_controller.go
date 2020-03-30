@@ -24,7 +24,6 @@ var log = logf.Log.WithName("controller_application")
 var destinationServer string
 var argoNamespace string
 
-const applicationKind = "Application"
 const applicationFinalizer = "finalizer.application.ops.csas.cz"
 const conditionTypeAvailable = "Available"
 
@@ -87,7 +86,7 @@ func watchMapFunc(obj handler.MapObject) []reconcile.Request {
 
 	if apiGroup != opsv1alpha1.SchemeGroupVersion.Group ||
 		apiVersion != opsv1alpha1.SchemeGroupVersion.Version ||
-		kind != applicationKind {
+		kind != opsv1alpha1.KindApplication {
 		// Mismatch, ignore
 		return []reconcile.Request{}
 	}

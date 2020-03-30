@@ -9,6 +9,8 @@ import (
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+const KindApplication = "Application"
+
 // ApplicationSpec defines the desired state of Application
 type ApplicationSpec struct {
 	// Source is a reference to the location ksonnet application definition
