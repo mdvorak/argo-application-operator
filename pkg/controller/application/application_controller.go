@@ -25,7 +25,7 @@ var destinationServer string
 var argoNamespace string
 
 const applicationFinalizer = "finalizer.application.ops.csas.cz"
-const conditionTypeAvailable = "Available"
+const availableCondition = "Available"
 
 const ownerApiGroupLabel = "application.ops.csas.cz/owner-api-group"
 const ownerApiVersionLabel = "application.ops.csas.cz/owner-api-version"
@@ -275,7 +275,7 @@ func (r *ReconcileApplication) newAvailableCondition(available bool, err error) 
 	if err != nil {
 		// Error
 		return status.Condition{
-			Type:    conditionTypeAvailable,
+			Type:    availableCondition,
 			Status:  corev1.ConditionFalse,
 			Reason:  "Failed",
 			Message: err.Error(),
@@ -283,7 +283,7 @@ func (r *ReconcileApplication) newAvailableCondition(available bool, err error) 
 	} else if available {
 		// Exists
 		return status.Condition{
-			Type:    conditionTypeAvailable,
+			Type:    availableCondition,
 			Status:  corev1.ConditionTrue,
 			Reason:  "Created",
 			Message: "reconciliation successful",
@@ -291,7 +291,7 @@ func (r *ReconcileApplication) newAvailableCondition(available bool, err error) 
 	} else {
 		// Deleted
 		return status.Condition{
-			Type:    conditionTypeAvailable,
+			Type:    availableCondition,
 			Status:  corev1.ConditionFalse,
 			Reason:  "Deleted",
 			Message: "reconciliation successful",
