@@ -205,7 +205,7 @@ func (r *ReconcileApplication) reconcileUpdate(ctx context.Context, logger logr.
 
 	// Verify ownership
 	if isApplicationOwnedBy(found, cr) {
-		// Not owned by this CR! Do not requeue, fail
+		// Not owned by this CR! This will fail repeatedly, but its ok - should not happen in real-life
 		return reconcile.Result{}, fmt.Errorf("object %s.%s \"%s\" in namespace \"%s\" already exists, and it is not owned by this object", found.Kind, found.GroupVersionKind().Group, found.Name, found.Namespace)
 	}
 
