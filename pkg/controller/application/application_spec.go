@@ -70,7 +70,7 @@ func newApplicationSpec(cr *opsv1alpha1.Application) argocdv1alpha1.ApplicationS
 }
 
 func patchApplication(obj *argocdv1alpha1.Application, source *argocdv1alpha1.Application) (change bool) {
-	// Compare and update labels
+	// Compare and update labels and annotations
 	for label, value := range source.Labels {
 		if obj.Labels[label] != value {
 			obj.Labels[label] = value
@@ -78,8 +78,15 @@ func patchApplication(obj *argocdv1alpha1.Application, source *argocdv1alpha1.Ap
 		}
 	}
 
+	for annotation, value := range source.Annotations {
+		if obj.Annotations[annotation] != value {
+			obj.Annotations[annotation] = value
+			change = true
+		}
+	}
+
 	// Compare and update spec
-	if !reflect.DeepEqual(obj.Spec, source.Spec) {
+	if change || !reflect.DeepEqual(obj.Spec, source.Spec) {
 		obj.Spec = source.Spec
 		change = true
 	}
