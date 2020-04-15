@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+//noinspection GoUnusedConst
 const (
 	NamespaceEnvVar          = "ARGOCD_NAMESPACE"
 	DestinationServerEnvVar  = "ARGOCD_DESTINATION_SERVER"
