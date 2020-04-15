@@ -70,7 +70,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource Application and requeue the owner Application
 	err = c.Watch(&source.Kind{Type: &argocdv1alpha1.Application{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(watchMapFunc),
-	})
+	}, applicationUpdatedPredicate{})
 	if err != nil {
 		return fmt.Errorf("failed to watch target objects: %w", err)
 	}
