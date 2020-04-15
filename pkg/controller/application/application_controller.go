@@ -6,6 +6,7 @@ import (
 	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	"github.com/go-logr/logr"
 	opsv1alpha1 "github.com/mdvorak/argo-application-operator/pkg/apis/ops/v1alpha1"
+	"github.com/mdvorak/argo-application-operator/pkg/argocd"
 	"github.com/operator-framework/operator-sdk/pkg/status"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -49,8 +50,8 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	var err error
 
-	destinationServer = GetDestinationServer()
-	argoNamespace, err = GetArgoNamespace()
+	destinationServer = argocd.GetDestinationServer()
+	argoNamespace, err = argocd.GetNamespace()
 	if err != nil {
 		return fmt.Errorf("argo namespace must be set: %w", err)
 	}
@@ -70,7 +71,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource Application and requeue the owner Application
 	err = c.Watch(&source.Kind{Type: &argocdv1alpha1.Application{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(watchMapFunc),
-	}, applicationUpdatedPredicate{})
+	}, argocd.ApplicationUpdatedPredicate{})
 	if err != nil {
 		return fmt.Errorf("failed to watch target objects: %w", err)
 	}

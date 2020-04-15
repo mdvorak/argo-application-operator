@@ -1,4 +1,4 @@
-package application
+package argocd
 
 import (
 	"github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
@@ -8,12 +8,12 @@ import (
 )
 
 // Detect update only when object changes, ignores Status
-type applicationUpdatedPredicate struct {
+type ApplicationUpdatedPredicate struct {
 	predicate.Predicate
 }
 
 // Update returns true if the Update event should be processed
-func (p applicationUpdatedPredicate) Update(e event.UpdateEvent) bool {
+func (p ApplicationUpdatedPredicate) Update(e event.UpdateEvent) bool {
 	objNew := e.ObjectNew.(*v1alpha1.Application)
 	objOld := e.ObjectOld.(*v1alpha1.Application)
 
@@ -29,16 +29,16 @@ func (p applicationUpdatedPredicate) Update(e event.UpdateEvent) bool {
 }
 
 // Create returns true if the Create event should be processed
-func (p applicationUpdatedPredicate) Create(event.CreateEvent) bool {
+func (p ApplicationUpdatedPredicate) Create(event.CreateEvent) bool {
 	return true
 }
 
 // Delete returns true if the Delete event should be processed
-func (p applicationUpdatedPredicate) Delete(event.DeleteEvent) bool {
+func (p ApplicationUpdatedPredicate) Delete(event.DeleteEvent) bool {
 	return true
 }
 
 // Generic returns true if the Generic event should be processed
-func (p applicationUpdatedPredicate) Generic(event.GenericEvent) bool {
+func (p ApplicationUpdatedPredicate) Generic(event.GenericEvent) bool {
 	return true
 }

@@ -14,8 +14,8 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/mdvorak/argo-application-operator/pkg/apis"
+	"github.com/mdvorak/argo-application-operator/pkg/argocd"
 	"github.com/mdvorak/argo-application-operator/pkg/controller"
-	"github.com/mdvorak/argo-application-operator/pkg/controller/application"
 	"github.com/mdvorak/argo-application-operator/version"
 
 	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
@@ -73,7 +73,7 @@ func main() {
 	printVersion()
 
 	// Argo namespace needs to be watched as well
-	err := application.AddArgoNamespaceToWatched()
+	err := argocd.AddNamespaceToWatched()
 	if err != nil {
 		log.Error(err, "Failed to add argo namespace to watched namespace list")
 		os.Exit(1)
@@ -86,7 +86,7 @@ func main() {
 	}
 	log.Info(fmt.Sprintf("Watch namespace '%s'", namespace))
 
-	argoNamespace, err := application.GetArgoNamespace()
+	argoNamespace, err := argocd.GetNamespace()
 	if err != nil {
 		log.Error(err, "Failed to get argo namespace")
 		os.Exit(1)
