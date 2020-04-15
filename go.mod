@@ -3,7 +3,7 @@ module github.com/mdvorak/argo-application-operator
 go 1.13
 
 require (
-	github.com/argoproj/argo-cd v1.4.2
+	github.com/argoproj/argo-cd v1.5.1
 	github.com/argoproj/pkg v0.0.0-20200319004004-f46beff7cd54 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/google/go-cmp v0.3.1

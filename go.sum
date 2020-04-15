@@ -67,6 +67,8 @@ github.com/antihax/optional v0.0.0-20180407024304-ca021399b1a6/go.mod h1:V8iCPQY
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/argoproj/argo-cd v1.4.2 h1:nd2MFXf8Rzl2lUvxYLfGSTaC/jkD4ilX5gtkHuM2loM=
 github.com/argoproj/argo-cd v1.4.2/go.mod h1:UPOPiF6Y1y/oTL3X1KcuLbu7ljD7f4+SIaXvlowBmhE=
+github.com/argoproj/argo-cd v1.5.1 h1:BlTdXOKLH3guOpuvGMzyaO6/w6KDjwNRe3v2yMKOMog=
+github.com/argoproj/argo-cd v1.5.1/go.mod h1:UPOPiF6Y1y/oTL3X1KcuLbu7ljD7f4+SIaXvlowBmhE=
 github.com/argoproj/pkg v0.0.0-20200319004004-f46beff7cd54 h1:hDn02iEkh5EUl4TJfOo6AI9uSgh0vt/qh66ODuQl/YE=
 github.com/argoproj/pkg v0.0.0-20200319004004-f46beff7cd54/go.mod h1:2EZ44RG/CcgtPTwrRR0apOc7oU6UIw8GjCUJWZ8X3bM=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
