@@ -189,11 +189,6 @@ func (r *ReconcileApplication) reconcileUpdate(ctx context.Context, logger logr.
 			return reconcile.Result{}, fmt.Errorf("failed to create Application.argocd.io: %w", err)
 		}
 
-		// WORKAROUND: sometimes Create removes TypeMeta information, dunno why
-		if app.Kind == "" {
-			app.TypeMeta = newApplicationTypeMeta()
-		}
-
 		// Add reference
 		r.addReference(ctx, logger, cr, app)
 
@@ -324,8 +319,15 @@ func (r *ReconcileApplication) addReference(ctx context.Context, logger logr.Log
 	// Copy instance for comparison
 	newInstance := cr.DeepCopy()
 
+	// Convert to Reference
+	ref, err := opsv1alpha1.ReferenceFromApplication(app, r.scheme)
+	if err != nil {
+		logger.Error(err, "failed build Reference from app object")
+		return
+	}
+
 	// Update only if changed
-	if newInstance.Status.References.SetReference(opsv1alpha1.ReferenceFromApplication(app)) {
+	if newInstance.Status.References.SetReference(ref) {
 		logger.Info("updating reference")
 
 		// Patch object

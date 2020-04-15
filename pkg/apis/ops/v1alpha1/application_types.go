@@ -5,6 +5,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/operator-framework/operator-sdk/pkg/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -78,13 +80,18 @@ func (a *References) RemoveReference(r Reference) bool {
 }
 
 // Create Reference object from Application.argocd.io
-func ReferenceFromApplication(obj *argocdv1alpha1.Application) Reference {
+func ReferenceFromApplication(obj *argocdv1alpha1.Application, scheme *runtime.Scheme) (Reference, error) {
+	gvk, err := apiutil.GVKForObject(obj, scheme)
+	if err != nil {
+		return Reference{}, err
+	}
+
 	return Reference{
-		APIVersion: obj.APIVersion,
-		Kind:       obj.Kind,
+		APIVersion: gvk.GroupVersion().String(),
+		Kind:       gvk.Kind,
 		Name:       obj.Name,
 		Namespace:  obj.Namespace,
-	}
+	}, nil
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
