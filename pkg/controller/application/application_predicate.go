@@ -19,12 +19,16 @@ func (p applicationUpdatedPredicate) Update(e event.UpdateEvent) bool {
 
 	// Compare what we are interested in
 	// NOTE we need to ignore Status! Argo updates it every 5 secs
-	return reflect.DeepEqual(objNew.Spec, objOld.Spec) ||
-		reflect.DeepEqual(objNew.Labels, objOld.Labels) ||
-		reflect.DeepEqual(objNew.Annotations, objOld.Annotations)
+	return !reflect.DeepEqual(objNew.Labels, objOld.Labels) ||
+		!reflect.DeepEqual(objNew.Annotations, objOld.Annotations) ||
+		!reflect.DeepEqual(objNew.Spec, objOld.Spec) ||
+		!reflect.DeepEqual(objNew.Operation, objOld.Operation) ||
+		!reflect.DeepEqual(objNew.OwnerReferences, objOld.OwnerReferences) ||
+		!reflect.DeepEqual(objNew.DeletionTimestamp, objOld.DeletionTimestamp) ||
+		!reflect.DeepEqual(objNew.Finalizers, objOld.Finalizers)
 }
 
-// Update returns true if the Create event should be processed
+// Create returns true if the Create event should be processed
 func (p applicationUpdatedPredicate) Create(event.CreateEvent) bool {
 	return true
 }
