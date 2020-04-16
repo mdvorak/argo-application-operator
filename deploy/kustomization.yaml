@@ -10,14 +10,6 @@ resources:
   - role_binding.yaml
   - service_account.yaml
   - view_cluster_role.yaml
-vars:
-  - name: ARGOCD_NAMESPACE
-    objref:
-      apiVersion: apps/v1
-      kind: Deployment
-      name: csas-application-operator
-    fieldref:
-      fieldpath: metadata.namespace
 images:
   - name: csas/csas-application-operator
     newTag: 0.5.2
