@@ -2,7 +2,6 @@ package v1alpha1
 
 import (
 	argocdv1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
-	"github.com/google/go-cmp/cmp"
 	"github.com/operator-framework/operator-sdk/pkg/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -54,7 +53,7 @@ type References []Reference
 func (a *References) SetReference(r Reference) bool {
 	// Find existing
 	for _, v := range *a {
-		if cmp.Equal(r, v) {
+		if r == v {
 			return false
 		}
 	}
@@ -68,7 +67,7 @@ func (a *References) SetReference(r Reference) bool {
 func (a *References) RemoveReference(r Reference) bool {
 	// Find existing
 	for i, v := range *a {
-		if cmp.Equal(r, v) {
+		if r == v {
 			// Remove
 			*a = append((*a)[:i], (*a)[i+1:]...)
 			return true
