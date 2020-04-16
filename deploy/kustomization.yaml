@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - crds/ops.csas.cz_applications_crd.yaml
+  - cluster_role.yaml
+  - cluster_role_binding.yaml
+  - edit_cluster_role.yaml
+  - operator.yaml
+  - role.yaml
+  - role_binding.yaml
+  - service_account.yaml
+  - view_cluster_role.yaml
+vars:
+  - name: ARGOCD_NAMESPACE
+    objref:
+      apiVersion: apps/v1
+      kind: Deployment
+      name: csas-application-operator
+    fieldref:
+      fieldpath: metadata.namespace
+images:
+  - name: csas/csas-application-operator
+    newTag: 0.5.2

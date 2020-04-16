@@ -12,14 +12,9 @@ spec:
       labels:
         name: csas-application-operator
     spec:
-      serviceAccountName: csas-application-operator
       containers:
-        - name: csas-application-operator
-          # Replace this with the built image name
-          image: REPLACE_IMAGE
-          command:
+        - command:
             - csas-application-operator
-          imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
               value: "" # Note: This needs to be EMPTY in order to watch all namespaces
@@ -35,3 +30,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: ARGOCD_DESTINATION_SERVER
               value: "https://kubernetes.default.svc"
+          image: csas/csas-application-operator
+          imagePullPolicy: Always
+          name: csas-application-operator
+      serviceAccountName: csas-application-operator
